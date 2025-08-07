@@ -1,13 +1,17 @@
 #! /bin/bash
-read -p "Enter Domain Name" domain
+read -p "Enter Domain Name: " domain
+for ip4 in $(dig +short "$domain" A); do
+    echo "Blocking IPv4: $ip4"
+    sudo iptables -A OUTPUT -d "$ip4" -j DROP
+done
+for ip6 in $(dig +short "$domain" AAAA); do
+    echo "Blocking IPv6: $ip6"
+    sudo ip6tables -A OUTPUT -d "$ip6" -j DROP
+done
 
-ip=$(nslookup "$domain"| awk '/^Address: / {print$2}' | tail -n1)
-if [[ -z "$ip" ]]; then 
-	echo "DNS Resolution Failed!"
-	exit 1
-fi
-echo "$domain Resolved to $ip"
-sudo ip6tables -A FORWARD -d "$ip" -j DROP
-iptables-save > /etc/rules.v4
+sudo iptables-save > /etc/rules.v4
+sudo ip6tables-save > /etc/rules.v6
+
 echo "Disallowed forwarding traffic to $domain"
+cat /etc/rules.v6
 cat /etc/rules.v4
